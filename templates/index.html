@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digit Recognition System</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #eef2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            
+            text-align: center;
+        }
+
+        h1 {
+            color: #4a4a4a;
+            margin-bottom: 25px;
+            font-size: 2.5rem;
+        }
+
+        h3 {
+            color: #6c757d;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            background-color: #fafafa;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus,
+        input[type="file"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 350px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        img:hover {
+            transform: scale(1.05);
+        }
+
+        button {
+            padding: 14px 22px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #prediction {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .footer {
+            font-size: 1rem;
+            margin-top: 25px;
+            color: #7f8c8d;
+        }
+
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h3>Digit Recognition System</h3>
+
+        <h3>Select Model:</h3>
+        <select id="modelSelector">
+            <option disabled selected>Select a model</option>
+        </select>
+
+        <h3>Upload an Image:</h3>
+        <input type="file" id="imageUpload" accept="image/*">
+        <img id="imagePreview" src="" alt="Selected Image" style="display: none;">
+
+        <h3 id="prediction"></h3>
+        <button onclick="sendToServer()">Submit</button>
+
+        <div class="footer">
+            <p>Powered by <a href="#">Obaid Amir & Abdul Haseeb</a></p>
+            <p>Source Code at : <a href="#">https://github.com/Solitary-Insight/Handwritten-Digit-Classification_Using_ML-DL-models.git</a></p>
+            
+            
+        </div>
+    </div>
+
+    <script>
+        // Fetch models from backend
+        async function fetchModels() {
+            try {
+                let response = await fetch('http://127.0.0.1:5000/models');
+                let data = await response.json();
+                let modelSelector = document.getElementById('modelSelector');
+                data.available_models.forEach(model => {
+                    let option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model.replaceAll("-", " ");
+                    modelSelector.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error fetching models", error);
+            }
+        }
+
+        // Preview image when uploaded
+        document.getElementById("imageUpload").addEventListener("change", function (event) {
+            let file = event.target.files[0];
+            if (file) {
+                document.getElementById("imagePreview").src = URL.createObjectURL(file);
+                document.getElementById("imagePreview").style.display = "block";
+            }
+        });
+
+        // Send the image and model selection to the server
+        async function sendToServer() {
+            let fileInput = document.getElementById("imageUpload").files[0];
+            let model = document.getElementById("modelSelector").value;
+            if (!fileInput || !model) {
+                alert("Please select a model and upload an image.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", fileInput);
+            formData.append("model", model);
+
+            // Convert the image to base64 to send to the server
+            const reader = new FileReader();
+            reader.onloadend = async function () {
+                let base64Image = reader.result.split(',')[1]; // Strip out the data:image part
+                try {
+                    let response = await fetch('http://127.0.0.1:5000/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            image: base64Image
+                        })
+                    });
+
+                    let data = await response.json();
+                    document.getElementById("prediction").textContent = "Digit in image is most likely: " + data.prediction;
+                } catch (error) {
+                    console.error("Error sending data", error);
+                    document.getElementById("prediction").textContent = "Failed to get prediction.";
+                }
+            };
+            reader.readAsDataURL(fileInput);
+        }
+
+        fetchModels(); // Call to populate model selection options
+    </script>
+</body>
+
+</html>
+
